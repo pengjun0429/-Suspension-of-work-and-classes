@@ -24,12 +24,14 @@ interface PublicLandingProps {
   config: LineBotConfig;
   onOpenSimulator: () => void;
   onQuickSubscribe?: (cityName: string) => void;
+  onSendMessage?: (text: string) => void;
 }
 
 export const PublicLanding: React.FC<PublicLandingProps> = ({
   counties,
   config,
   onOpenSimulator,
+  onSendMessage,
 }) => {
   const [copiedId, setCopiedId] = useState(false);
   const botId = config.botBasicId || '@190azbzx';

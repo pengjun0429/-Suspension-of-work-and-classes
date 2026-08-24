@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "account_id": "6ff26bec4d6597fab63a05a7eed1f497",
+  "name": "line-closure-bot",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+
+  "vars": {
+    "APP_URL": "https://line.damcurryrice.com"
+  },
+
+  "kv_namespaces": [
+    { "binding": "KV", "id": "c3611893fbdf498e94afbadf8066b709" }
+  ],
+
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  }
+}

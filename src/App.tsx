@@ -14,6 +14,7 @@ import { DrillSimulator } from './components/DrillSimulator';
 import { LineConfigPanel } from './components/LineConfigPanel';
 import { AuditLogsPanel } from './components/AuditLogsPanel';
 import { PublicLanding } from './components/PublicLanding';
+import { LoginPage } from './components/LoginPage';
 import {
   Globe,
   MapPin,
@@ -24,16 +25,16 @@ import {
   FileText,
   RefreshCw,
   Clock,
-  Radio,
-  ExternalLink,
   ShieldCheck,
   Sparkles,
   Zap,
+  LogOut,
 } from 'lucide-react';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [viewMode, setViewMode] = useState<'public' | 'admin'>('public');
-  const [activeTab, setActiveTab] = useState<'landing' | 'map' | 'simulator' | 'subscribers' | 'drill' | 'config' | 'logs'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'simulator' | 'subscribers' | 'drill' | 'config' | 'logs'>('map');
   const [counties, setCounties] = useState<CountyStatus[]>([]);
   const [subscribers, setSubscribers] = useState<UserSubscription[]>([]);
   const [config, setConfig] = useState<LineBotConfig>({
@@ -59,6 +60,42 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei' }));
   const [showSimulatorModal, setShowSimulatorModal] = useState(false);
+
+  // Check authentication on mount
+  useEffect(() => {
+    const token = localStorage.getItem('admin_token');
+    if (token) {
+      verifyToken(token);
+    }
+  }, []);
+
+  const verifyToken = async (token: string) => {
+    try {
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem('admin_token');
+      }
+    } catch {
+      localStorage.removeItem('admin_token');
+    }
+  };
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token');
+    setIsAuthenticated(false);
+    setViewMode('public');
+  };
 
   // Clock timer
   useEffect(() => {
@@ -147,6 +184,11 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Show login page if not authenticated and trying to access admin
+  if (viewMode === 'admin' && !isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   const suspendedCount = counties.filter(c => c.isSuspended).length;
   const currentSimulatorUser =
     subscribers.find(s => s.userId === 'simulated_user_current') ||
@@ -161,17 +203,14 @@ export default function App() {
     };
 
   const botId = config.botBasicId || '@190azbzx';
-  const lineAddFriendUrl = `https://line.me/R/ti/p/${encodeURIComponent(botId)}`;
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 font-sans flex flex-col">
-      {/* ===================== Header Navigation ===================== */}
+      {/* Header Navigation */}
       {viewMode === 'public' ? (
-        /* PUBLIC CLEAN HEADER */
         <header className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-lg">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              {/* Logo & Public Title */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#06C755] to-emerald-400 text-white flex items-center justify-center font-black text-xl shadow-lg shadow-emerald-500/20">
                   ⚡
@@ -185,13 +224,12 @@ export default function App() {
                       {botId}
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                  <div className="text-[11px] text-slate-400">
                     <span>行政院人事行政總處 (DGPA) 官方連線</span>
                   </div>
                 </div>
               </div>
 
-              {/* Status & Actions */}
               <div className="flex items-center gap-3">
                 {suspendedCount > 0 ? (
                   <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
@@ -205,17 +243,6 @@ export default function App() {
                   </span>
                 )}
 
-                <a
-                  href={lineAddFriendUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-4 py-2 bg-[#06C755] hover:bg-[#05b34c] text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5"
-                >
-                  <Smartphone className="w-3.5 h-3.5" />
-                  <span>加入 LINE 好友</span>
-                </a>
-
-                {/* Switch to Admin Mode */}
                 <button
                   onClick={() => setViewMode('admin')}
                   className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 text-xs font-medium transition-colors"
@@ -228,11 +255,9 @@ export default function App() {
           </div>
         </header>
       ) : (
-        /* ADMIN FULL CONTROL HEADER */
         <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 shadow-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              {/* Logo & Admin Title */}
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-500 text-white flex items-center justify-center font-black text-xl shadow-lg">
                   ⚙️
@@ -243,25 +268,21 @@ export default function App() {
                       系統管理控制台
                     </h1>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      管理者模式 (Admin)
+                      管理者模式
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                    <span className="flex items-center gap-1 text-slate-300">
-                      <Clock className="w-3 h-3 text-sky-400" />
-                      <span>{currentTime}</span>
-                    </span>
+                    <Clock className="w-3 h-3 text-sky-400" />
+                    <span>{currentTime}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Admin Actions */}
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={handleManualRefresh}
                   disabled={isRefreshing}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-colors"
-                  title="立即與行政院人事行政總處同步"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRefreshing ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">同步 DGPA</span>
@@ -272,13 +293,20 @@ export default function App() {
                   className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
                 >
                   <Globe className="w-3.5 h-3.5" />
-                  <span>切換至一般用戶前台</span>
+                  <span>前台</span>
+                </button>
+
+                <button
+                  onClick={handleLogout}
+                  className="p-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-colors"
+                  title="登出"
+                >
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Admin Navigation Tabs */}
           <div className="bg-slate-900/95 border-t border-slate-800/80 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
               <button
@@ -302,10 +330,7 @@ export default function App() {
                 }`}
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                <span>LINE 互動模擬器</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/30 text-emerald-300 text-[10px]">
-                  即測
-                </span>
+                <span>LINE 模擬器</span>
               </button>
 
               <button
@@ -317,10 +342,7 @@ export default function App() {
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>訂閱用戶管理</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 text-[10px]">
-                  {subscribers.length}
-                </span>
+                <span>訂閱管理</span>
               </button>
 
               <button
@@ -332,7 +354,7 @@ export default function App() {
                 }`}
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span>颱風與警報演練</span>
+                <span>演練模擬</span>
               </button>
 
               <button
@@ -344,10 +366,7 @@ export default function App() {
                 }`}
               >
                 <Settings className="w-3.5 h-3.5" />
-                <span>LINE 官方串接</span>
-                {config.isConfigured ? (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                ) : null}
+                <span>LINE 串接</span>
               </button>
 
               <button
@@ -359,17 +378,14 @@ export default function App() {
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>推播與事件日誌</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-300 text-[10px]">
-                  {logs.length}
-                </span>
+                <span>日誌</span>
               </button>
             </div>
           </div>
         </header>
       )}
 
-      {/* ===================== Main Content ===================== */}
+      {/* Main Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {viewMode === 'public' ? (
           <PublicLanding
@@ -386,20 +402,16 @@ export default function App() {
                 onRefresh={handleManualRefresh}
                 isRefreshing={isRefreshing}
                 onQuickSubscribe={handleQuickSubscribe}
-                onTestCountyAlert={c => {
-                  handleQuickSubscribe(c.cityName);
-                }}
+                onTestCountyAlert={c => handleQuickSubscribe(c.cityName)}
                 datasetMeta={datasetMeta}
               />
             )}
-
             {activeTab === 'simulator' && (
               <LineChatSimulator
                 currentUser={currentSimulatorUser}
                 onUserUpdate={fetchStatus}
               />
             )}
-
             {activeTab === 'subscribers' && (
               <SubscribersManager
                 subscribers={subscribers}
@@ -407,21 +419,18 @@ export default function App() {
                 onTestPush={handleTestPush}
               />
             )}
-
             {activeTab === 'drill' && (
               <DrillSimulator
                 counties={counties}
                 onRefresh={fetchStatus}
               />
             )}
-
             {activeTab === 'config' && (
               <LineConfigPanel
                 config={config}
                 onRefresh={fetchStatus}
               />
             )}
-
             {activeTab === 'logs' && (
               <AuditLogsPanel
                 logs={logs}
@@ -432,14 +441,14 @@ export default function App() {
         )}
       </main>
 
-      {/* ===================== Public Simulator Modal ===================== */}
+      {/* Simulator Modal */}
       {showSimulatorModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Smartphone className="w-5 h-5 text-[#06C755]" />
-                <span className="font-bold text-white text-sm">LINE 機器人指令互動體驗區</span>
+                <span className="font-bold text-white text-sm">LINE 機器人互動體驗區</span>
               </div>
               <button
                 onClick={() => setShowSimulatorModal(false)}
@@ -458,32 +467,19 @@ export default function App() {
         </div>
       )}
 
-      {/* ===================== Footer ===================== */}
+      {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-5 text-center text-xs text-slate-500 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span>🇹🇼 <strong>LINE 停班停課自動推送機器人</strong> ({botId})</span>
-            <span>·</span>
-            <a
-              href="https://data.gov.tw/dataset/20457"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sky-600 hover:underline font-semibold"
-            >
-              政府資料開放平台 (DGPA 20457)
-            </a>
-          </div>
-
-          <div className="flex items-center gap-4 text-slate-400">
-            <span>24H 即時異動監控</span>
-            <span>·</span>
-            <button
-              onClick={() => setViewMode(viewMode === 'public' ? 'admin' : 'public')}
-              className="text-slate-500 hover:text-slate-800 font-semibold underline transition-colors"
-            >
-              {viewMode === 'public' ? '進入系統後台 (Admin)' : '切換回用戶前台 (Public)'}
-            </button>
-          </div>
+        <div className="max-w-7xl mx-auto px-4">
+          <span>🇹🇼 <strong>LINE 停班停課自動推送機器人</strong> ({botId})</span>
+          <span className="mx-2">·</span>
+          <a
+            href="https://data.gov.tw/dataset/20457"
+            target="_blank"
+            rel="noreferrer"
+            className="text-sky-600 hover:underline font-semibold"
+          >
+            政府資料開放平台
+          </a>
         </div>
       </footer>
     </div>
