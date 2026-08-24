@@ -1,0 +1,8 @@
+{
+  "name": "LINE 停班停課自動推送機器人",
+  "description": "即時整合行政院人事行政總處(DGPA)停班停課公開資料的 LINE 自動推播機器人管理與模擬系統，支援自訂訂閱縣市、提醒時間與推播頻率。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
